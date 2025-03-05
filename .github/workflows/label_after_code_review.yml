@@ -1,0 +1,25 @@
+name: Label after Code Review
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  track_pr:
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+      - name: Update Label
+        run: |
+          pr_number=${{ github.event.pull_request.number }}
+          gh pr checkout $pr_number
+          review_decision=$(gh pr status --json reviewDecision --jq '.currentBranch.reviewDecision')
+          if [ "$review_decision" == "APPROVED" ]; then
+            gh pr edit $pr_number --add-label "approved" --remove-label "needs fix,ready for review"
+          elif [ "$review_decision" == "CHANGES_REQUESTED" ]; then
+            gh pr edit $pr_number --add-label "needs fix" --remove-label "approved,ready for review"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
